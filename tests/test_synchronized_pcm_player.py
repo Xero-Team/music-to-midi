@@ -81,6 +81,17 @@ def test_per_instrument_mute_is_mixed_before_the_single_output_stream() -> None:
     np.testing.assert_allclose(mixed, 0.3, atol=1.0 / 32_767.0)
 
 
+def test_mix_device_drops_mute_ids_without_a_loaded_bus() -> None:
+    zeros = np.zeros(4, dtype="float32")
+    device = _AlignedPcmMixDevice(zeros, np.ones(4, dtype="float32"))
+    device.set_instrument_buses({"piano": np.full(4, 0.2, dtype="float32")})
+    device.set_mix_state(mix=1.0, stereo=False, muted=frozenset({"piano", "gm:002"}))
+
+    assert device._muted == frozenset({"piano"})
+    mixed = _decode_stereo_pcm(device.render_frames_for_test(2))
+    np.testing.assert_allclose(mixed, 0.0, atol=1.0 / 32_767.0)
+
+
 def test_aligned_pcm_loader_rejects_a_different_frame_axis(tmp_path: Path) -> None:
     reference = _write_mono_wav(tmp_path / "reference.wav", np.zeros(100, dtype="float32"))
     mismatched = _write_mono_wav(tmp_path / "mismatched.wav", np.zeros(99, dtype="float32"))

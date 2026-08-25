@@ -3840,10 +3840,13 @@ class MuscriptorResultWidget(QFrame):
         stereo = self.stereo_checkbox.isChecked() and self._stereo_playback_available
         mix = self.mix_slider.value() / 100.0
         self.mix_slider.setEnabled(bool(self._normal_sources) and not stereo)
+        audible_muted = frozenset(
+            instrument for instrument in self._muted if instrument in self._normal_sources
+        )
         self._playback_engine.set_mix_state(
             mix=mix,
             stereo=stereo,
-            muted=frozenset(self._muted),
+            muted=audible_muted,
         )
 
     def _toggle_mute(self, instrument: str) -> None:

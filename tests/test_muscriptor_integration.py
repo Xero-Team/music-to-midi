@@ -1251,6 +1251,81 @@ def test_generic_snapshot_does_not_unlock_playback_before_rendered_audio(tmp_pat
         widget.close()
 
 
+def test_streaming_mute_without_instrument_bus_does_not_crash(tmp_path: Path):
+    app = QApplication.instance() or QApplication([])
+    source = _silent_wav(tmp_path / "source.wav", 1.0)
+    rendered = _silent_wav(tmp_path / "gm-000.wav", 1.0)
+    widget = MuscriptorResultWidget(
+        str(source),
+        [],
+        backend_label="YourMT3+",
+        muscriptor_groups=False,
+    )
+    widget._queue_preview = lambda *_args, **_kwargs: None
+    try:
+        widget._on_preview_ready(
+            1,
+            MuscriptorPreviewAssets(
+                notes=(
+                    MuscriptorRollNote(
+                        instrument="gm:000",
+                        pitch=60,
+                        velocity=100,
+                        start=0.0,
+                        end=0.5,
+                        program=0,
+                    ),
+                ),
+                duration=1.0,
+                transcription_wav=rendered,
+                original_wav=source,
+                instrument_wavs={"gm:000": rendered},
+                midi_gain_db=0.0,
+            ),
+        )
+        widget.add_stream_event(
+            {
+                "type": "snapshot",
+                "backend": "YourMT3+",
+                "completed": 8,
+                "total": 16,
+                "frontier_seconds": 1.0,
+                "duration_seconds": 2.0,
+                "notes": [
+                    {
+                        "instrument": "gm:000",
+                        "program": 0,
+                        "is_drum": False,
+                        "pitch": 60,
+                        "velocity": 100,
+                        "start": 0.0,
+                        "end": 0.5,
+                    },
+                    {
+                        "instrument": "gm:002",
+                        "program": 2,
+                        "is_drum": False,
+                        "pitch": 64,
+                        "velocity": 100,
+                        "start": 0.1,
+                        "end": 0.8,
+                    },
+                ],
+            }
+        )
+        app.processEvents()
+
+        widget._toggle_mute("gm:002")
+
+        assert "gm:002" in widget._muted
+        assert widget._playback_engine._source is not None
+        assert "gm:002" not in widget._playback_engine._source._muted
+        assert "gm:002" not in widget._normal_sources
+    finally:
+        widget.shutdown()
+        widget.close()
+
+
 def test_new_preview_is_committed_only_after_current_playback_stops(tmp_path: Path):
     app = QApplication.instance() or QApplication([])
     source = _tone_wav(tmp_path / "source.wav", 2.0, amplitude=0.1)

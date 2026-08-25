@@ -141,16 +141,10 @@ class _AlignedPcmMixDevice(QIODevice):
             raise ValueError(f"Invalid synchronized playback mix: {mix!r}")
         muted_set = frozenset(str(item) for item in muted)
         with self._lock:
-            if muted_set and not self._instrument_buses:
-                raise RuntimeError(
-                    "Per-instrument synchronized playback was requested before its buses loaded"
-                )
-            missing = muted_set - self._instrument_buses.keys()
-            if missing:
-                raise RuntimeError(
-                    "Synchronized playback mute state references unknown instruments: "
-                    f"{sorted(missing)!r}"
-                )
+            if self._instrument_buses:
+                muted_set &= frozenset(self._instrument_buses)
+            else:
+                muted_set = frozenset()
             self._mix = mix_value
             self._stereo = bool(stereo)
             self._muted = muted_set
@@ -354,9 +348,12 @@ class SynchronizedPcmPlayer(QObject):
     ) -> None:
         if self._source is None:
             return
-        if muted:
+        audible_muted = frozenset(
+            str(item) for item in muted if str(item) in self._instrument_paths
+        )
+        if audible_muted:
             self.ensure_instrument_buses()
-        self._source.set_mix_state(mix=mix, stereo=stereo, muted=muted)
+        self._source.set_mix_state(mix=mix, stereo=stereo, muted=audible_muted)
         if self._suspended:
             self._discard_buffer_at_current_position()
 
