@@ -1,0 +1,16 @@
+# Forgejo collaboration bridge; credentials stay in the bot deployment.
+# Keep this binding identical on both default branches.
+[forgejo.bridge]
+enabled = true
+destination = "xero-team/music-to-midi"
+github_repository = "Xero-Team/music-to-midi"
+github_repository_id = 1346413375
+forgejo_repository_id = 14
+issues = false
+pull_requests = true
+comments = true
+sync_refs = true
+
+[forgejo.mirror]
+enabled = false
+destination = "xero-team/music-to-midi"
